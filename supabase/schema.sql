@@ -273,6 +273,32 @@ create policy "members read audit" on public.expense_audit
 -- (audit rows are written only by the security-definer trigger)
 
 -- ---------------------------------------------------------------------
+-- 7b. Table privileges
+--     Newer Supabase projects no longer auto-grant access on new tables,
+--     so grant exactly what the app needs. RLS above still applies on top.
+--     The anon role (signed-out visitors) gets nothing.
+-- ---------------------------------------------------------------------
+revoke all on public.allowed_users, public.profiles, public.divisions, public.categories,
+              public.expenses, public.expense_audit, public.expense_monthly,
+              public.expense_category_monthly
+  from anon, authenticated;
+
+grant select                         on public.profiles                 to authenticated;
+grant select                         on public.divisions                to authenticated;
+grant select, insert, update         on public.categories               to authenticated;
+grant select, insert, update, delete on public.expenses                 to authenticated;
+grant select                         on public.expense_audit            to authenticated;
+grant select                         on public.expense_monthly          to authenticated;
+grant select                         on public.expense_category_monthly to authenticated;
+
+grant all on public.allowed_users, public.profiles, public.divisions, public.categories,
+             public.expenses, public.expense_audit, public.expense_monthly,
+             public.expense_category_monthly
+  to service_role;
+
+grant execute on function public.is_member() to authenticated;
+
+-- ---------------------------------------------------------------------
 -- 8. Receipt storage (private bucket, 10 MB, images + PDF)
 -- ---------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
