@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowRight, CalendarRange, Layers, Plus, Receipt, Wallet } from "lucide-react";
 import { getCategories, getCategoryMonthly, getDivisions, getMonthly, requireMember } from "@/lib/data";
 import { availableYears, divisionTotals, monthlySeries, summarize, yearlySeries } from "@/lib/analytics";
-import { formatPKR, pctChange, todayPK } from "@/lib/utils";
-import { Delta, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { formatPKR, plural, todayPK } from "@/lib/utils";
+import { Compare, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { RankedBars } from "@/components/charts/RankedBars";
 import { ShareBar } from "@/components/charts/ShareBar";
@@ -80,7 +80,7 @@ export default async function DashboardPage({
         <StatCard
           label="Total combined (all time)"
           value={formatPKR(s.allTime)}
-          sub={`${s.allCount.toLocaleString()} expenses recorded`}
+          sub={`${plural(s.allCount, "expense")} recorded`}
           icon={<Wallet className="h-4 w-4" />}
           accent="navy"
         />
@@ -88,9 +88,12 @@ export default async function DashboardPage({
           label={`${year} total`}
           value={formatPKR(s.yearTotal)}
           sub={
-            <span className="flex items-center gap-1.5">
-              <Delta value={pctChange(s.yearTotal, s.prevYearToDate)} /> vs same period {year - 1}
-            </span>
+            <Compare
+                current={s.yearTotal}
+                previous={s.prevYearToDate}
+                label={`same period of ${year - 1}`}
+                emptyText={`No spending in ${year - 1} to compare`}
+              />
           }
           icon={<CalendarRange className="h-4 w-4" />}
           accent="emerald"
@@ -99,9 +102,12 @@ export default async function DashboardPage({
           label="This month"
           value={formatPKR(s.thisMonth)}
           sub={
-            <span className="flex items-center gap-1.5">
-              <Delta value={pctChange(s.thisMonth, s.lastMonth)} /> vs last month ({formatPKR(s.lastMonth)})
-            </span>
+            <Compare
+                current={s.thisMonth}
+                previous={s.lastMonth}
+                label="last month"
+                emptyText="No spending last month to compare"
+              />
           }
           icon={<Receipt className="h-4 w-4" />}
           accent="orange"
@@ -109,7 +115,7 @@ export default async function DashboardPage({
         <StatCard
           label={`Avg. per month (${year})`}
           value={formatPKR(s.avgMonthly)}
-          sub={`${s.yearCount.toLocaleString()} expenses in ${year}`}
+          sub={`${plural(s.yearCount, "expense")} in ${year}`}
           icon={<Layers className="h-4 w-4" />}
           accent="navy"
         />
@@ -135,7 +141,7 @@ export default async function DashboardPage({
               {formatPKR(yearTotal)}
             </div>
             <div className="text-xs text-ink-subtle">
-              {year} · {yearCount} expenses
+              {year} · {plural(yearCount, "expense")}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-xs">
               <div>

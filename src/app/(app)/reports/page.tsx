@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Download } from "lucide-react";
 import { getCategories, getDivisions, getProfiles, requireMember } from "@/lib/data";
 import { applyFilters, filtersToQuery, parseFilters } from "@/lib/filters";
-import { formatDate, formatPKR, MONTHS, todayPK } from "@/lib/utils";
+import { formatDate, formatDateTime, formatPKR, MONTHS, todayPK } from "@/lib/utils";
 import { DivisionBadge, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { FilterBar } from "@/components/FilterBar";
 import { PrintButton } from "@/components/PrintButton";
@@ -107,7 +107,7 @@ export default async function ReportsPage({
           {scope} · {period}
         </div>
         <div className="text-xs text-ink-subtle">
-          Generated {new Date().toLocaleString("en-GB")} by {profile.full_name}
+          Generated {formatDateTime(new Date())} by {profile.full_name}
         </div>
       </div>
 

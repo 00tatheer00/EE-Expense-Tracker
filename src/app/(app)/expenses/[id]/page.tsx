@@ -233,7 +233,9 @@ export default async function ExpenseDetailPage({
             <div className="card-title">History</div>
           </div>
           <ol className="mt-4 space-y-4">
-            {((audit ?? []) as AuditRow[]).map((a) => {
+            {((audit ?? []) as AuditRow[])
+              .filter((a) => a.action !== "updated" || changedFields(a).length > 0)
+              .map((a) => {
               const fields = changedFields(a);
               return (
                 <li key={a.id} className="relative pl-5">

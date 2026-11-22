@@ -4,8 +4,8 @@ import { ArrowRight, CalendarRange, Download, Layers, Plus, Receipt } from "luci
 import { getCategories, getCategoryMonthly, getDivisions, getMonthly, requireMember } from "@/lib/data";
 import { availableYears, monthlySeries, summarize } from "@/lib/analytics";
 import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
-import { formatPKR, pctChange, todayPK } from "@/lib/utils";
-import { Delta, DivisionBadge, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { formatPKR, plural, todayPK } from "@/lib/utils";
+import { Compare, DivisionBadge, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { RankedBars } from "@/components/charts/RankedBars";
 import { YearSelect } from "@/components/YearSelect";
@@ -107,9 +107,12 @@ export default async function DivisionPage({
           label={`${year} total`}
           value={formatPKR(s.yearTotal)}
           sub={
-            <span className="flex items-center gap-1.5">
-              <Delta value={pctChange(s.yearTotal, s.prevYearToDate)} /> vs same period {year - 1}
-            </span>
+            <Compare
+                current={s.yearTotal}
+                previous={s.prevYearToDate}
+                label={`same period of ${year - 1}`}
+                emptyText={`No spending in ${year - 1} to compare`}
+              />
           }
           icon={<CalendarRange className="h-4 w-4" />}
           accent="emerald"
@@ -118,9 +121,12 @@ export default async function DivisionPage({
           label="This month"
           value={formatPKR(s.thisMonth)}
           sub={
-            <span className="flex items-center gap-1.5">
-              <Delta value={pctChange(s.thisMonth, s.lastMonth)} /> vs last month
-            </span>
+            <Compare
+                current={s.thisMonth}
+                previous={s.lastMonth}
+                label="last month"
+                emptyText="No spending last month to compare"
+              />
           }
           icon={<Receipt className="h-4 w-4" />}
           accent="orange"
@@ -128,13 +134,13 @@ export default async function DivisionPage({
         <StatCard
           label={`Avg. per month (${year})`}
           value={formatPKR(s.avgMonthly)}
-          sub={`${s.yearCount} expenses in ${year}`}
+          sub={`${plural(s.yearCount, "expense")} in ${year}`}
           icon={<Layers className="h-4 w-4" />}
         />
         <StatCard
           label="All time"
           value={formatPKR(s.allTime)}
-          sub={`${s.allCount.toLocaleString()} expenses recorded`}
+          sub={`${plural(s.allCount, "expense")} recorded`}
           icon={<Layers className="h-4 w-4" />}
         />
       </section>

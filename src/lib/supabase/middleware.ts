@@ -34,8 +34,24 @@ Add them in your hosting settings (Vercel → Project → Settings → Environme
   return new NextResponse(html, { status: 500, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
+/** /reports with no date range → this year so far (redirect before rendering, no flash). */
+function reportsDefaultRange(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname !== "/reports" || searchParams.has("from") || searchParams.has("to")) return null;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
+  const url = request.nextUrl.clone();
+  url.searchParams.set("from", `${today.slice(0, 4)}-01-01`);
+  url.searchParams.set("to", today);
+  return NextResponse.redirect(url);
+}
+
 export async function updateSession(request: NextRequest) {
-  if (DEMO) return demoGate(request);
+  if (DEMO) {
+    const gate = demoGate(request);
+    if (gate.headers.get("location")) return gate;
+    return reportsDefaultRange(request) ?? gate;
+  }
+  const reportsRedirect = reportsDefaultRange(request);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -91,6 +107,12 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  if (reportsRedirect) {
+    // Carry over any refreshed session cookies.
+    response.cookies.getAll().forEach((c) => reportsRedirect.cookies.set(c));
+    return reportsRedirect;
   }
 
   return response;

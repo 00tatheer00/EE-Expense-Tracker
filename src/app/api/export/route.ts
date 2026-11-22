@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { applyFilters, applySort, parseFilters } from "@/lib/filters";
 import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
+import { formatDateTime, todayPK } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     "Payment Method",
     "Notes",
     "Added By",
-    "Added At",
+    "Added At (PKT)",
     "Expense ID",
   ];
 
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
         e.payment_method,
         e.notes,
         e.creator?.full_name,
-        new Date(e.created_at).toISOString(),
+        formatDateTime(e.created_at),
         e.id,
       ]
         .map(csvCell)
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
   }
   lines.push(["", "", "", "TOTAL", "", total.toFixed(2)].map(csvCell).join(","));
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = todayPK();
   const scope = filters.division ? rows[0]?.division?.short_name?.replace(/\W+/g, "-") ?? "division" : "all-divisions";
   const body = "﻿" + lines.join("\r\n"); // BOM so Excel reads UTF-8 correctly
 

@@ -19,27 +19,53 @@ export function formatPKR(value: number | string | null | undefined, exact = fal
   return (exact ? pkrExact : pkr).format(n).replace("PKR", "Rs").replace(/\s+/, " ");
 }
 
+/** Short axis labels: Rs 2.5k, Rs 1.2 L, Rs 3 Cr (no misleading rounding, no trailing ".0"). */
 export function compactPKR(value: number) {
   const abs = Math.abs(value);
-  if (abs >= 10_000_000) return `Rs ${(value / 10_000_000).toFixed(abs >= 100_000_000 ? 0 : 1)} Cr`;
-  if (abs >= 100_000) return `Rs ${(value / 100_000).toFixed(abs >= 1_000_000 ? 0 : 1)} L`;
-  if (abs >= 1_000) return `Rs ${(value / 1_000).toFixed(0)}k`;
-  return `Rs ${value.toFixed(0)}`;
+  const fmt = (n: number) => String(Number(n.toFixed(1)));
+  if (abs >= 10_000_000) return `Rs ${fmt(value / 10_000_000)} Cr`;
+  if (abs >= 100_000) return `Rs ${fmt(value / 100_000)} L`;
+  if (abs >= 1_000) return `Rs ${fmt(value / 1_000)}k`;
+  return `Rs ${Math.round(value)}`;
 }
 
+/** All times are shown in Pakistan time, no matter where the server runs (Vercel runs on UTC). */
+export const APP_TIME_ZONE = "Asia/Karachi";
+
+/**
+ * Formats a date. Date-only values ("2026-11-22") are calendar dates and are shown
+ * exactly as stored; timestamps are converted to Pakistan time.
+ */
 export function formatDate(value: string | Date, opts?: Intl.DateTimeFormatOptions) {
-  const d = typeof value === "string" ? new Date(value.length === 10 ? value + "T00:00:00" : value) : value;
-  return d.toLocaleDateString("en-GB", opts ?? { day: "2-digit", month: "short", year: "numeric" });
+  const options = opts ?? { day: "2-digit", month: "short", year: "numeric" };
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(value + "T00:00:00Z").toLocaleDateString("en-GB", { ...options, timeZone: "UTC" });
+  }
+  return new Date(value).toLocaleDateString("en-GB", { ...options, timeZone: APP_TIME_ZONE });
 }
 
-export function formatDateTime(value: string) {
+export function formatDateTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
+    timeZone: APP_TIME_ZONE,
   });
+}
+
+/** "1 expense", "3 expenses" */
+export function plural(n: number, word: string, pluralWord = `${word}s`) {
+  return `${n.toLocaleString("en-PK")} ${n === 1 ? word : pluralWord}`;
+}
+
+/** Adds days to a YYYY-MM-DD date (calendar math, no time-zone drift). */
+export function addDays(date: string, days: number) {
+  const d = new Date(date + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export function relativeTime(value: string) {

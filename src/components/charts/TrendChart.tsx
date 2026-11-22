@@ -85,6 +85,9 @@ export function TrendChart({
               tickLine={false}
               axisLine={false}
               width={64}
+              allowDecimals={false}
+              // Empty or tiny data: keep a sensible scale instead of "Rs 1, Rs 2, Rs 3…"
+              domain={[0, (max: number) => (max > 0 ? Math.max(max, 1000) : 10000)]}
               tick={{ fill: "#64748B", fontSize: 12 }}
               tickFormatter={(v: number) => (v === 0 ? "0" : compactPKR(v))}
             />

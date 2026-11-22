@@ -71,7 +71,8 @@ export default async function ExpensesPage({
 
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 px-1 text-sm">
         <span className="text-ink-subtle">
-          <span className="font-semibold text-ink">{totalCount.toLocaleString()}</span> expenses
+          <span className="font-semibold text-ink">{totalCount.toLocaleString("en-PK")}</span>{" "}
+          {totalCount === 1 ? "expense" : "expenses"}
         </span>
         <span className="text-ink-subtle">
           Total: <span className="font-semibold tabular-nums text-navy-900">{formatPKR(total, true)}</span>

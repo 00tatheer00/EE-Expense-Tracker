@@ -1,16 +1,13 @@
 import Link from "next/link";
 import { ChevronRight, Paperclip } from "lucide-react";
 import type { ExpenseWithRelations } from "@/lib/types";
-import { formatDate, formatPKR, initials, todayPK } from "@/lib/utils";
+import { addDays, formatDate, formatPKR, initials, todayPK } from "@/lib/utils";
 import { personColor } from "@/components/AddedBy";
 
 function dayLabel(date: string) {
   const today = todayPK();
-  const y = new Date(today + "T00:00:00");
-  y.setDate(y.getDate() - 1);
-  const yesterday = y.toISOString().slice(0, 10);
   if (date === today) return "Today";
-  if (date === yesterday) return "Yesterday";
+  if (date === addDays(today, -1)) return "Yesterday";
   return formatDate(date, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 

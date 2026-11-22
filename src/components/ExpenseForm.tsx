@@ -323,7 +323,9 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
           <span />
         )}
         <div className="flex gap-2">
-          <button type="button" onClick={() => router.back()} className="btn-secondary h-12 flex-1 sm:h-10 sm:flex-none" disabled={busy}>
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? router.back() : router.push(isEdit ? `/expenses/${expense!.id}` : "/expenses"))} className="btn-secondary h-12 flex-1 sm:h-10 sm:flex-none" disabled={busy}>
             Cancel
           </button>
           <button type="submit" className="btn-success h-12 flex-[2] text-[15px] sm:h-10 sm:flex-none sm:min-w-[160px] sm:text-sm" disabled={busy}>

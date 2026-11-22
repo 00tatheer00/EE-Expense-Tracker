@@ -5,10 +5,12 @@ Expense management for **Emerging Edge**, **Emerging Edge School of Technology (
 - Each of the three divisions has its own expense records, categories, dashboard and reports. The database enforces this: an expense can't use another division's category.
 - One central dashboard shows combined totals, monthly and yearly trends, a division comparison, category analytics and recent activity.
 - Every new expense triggers an **email to all authorized users**. The email says who added it, the division, location, event or purpose, amount, category, date and notes.
-- Expenses can carry an optional receipt or invoice (image or PDF). Receipts are stored in a private bucket and opened through signed links that expire.
+- An **Activity** page and the dashboard's Team activity show who added, edited or deleted each expense. Opening a deleted expense's link shows who deleted it and when.
+- Open screens update live (Supabase Realtime) when anyone changes an expense.
+- All dates and times are shown in Pakistan time (Asia/Karachi).
 - The expense list has search, filters and pagination. You can export to CSV (opens in Excel) or print to PDF.
 - Every create, edit and delete is written to an audit trail.
-- Only users on the allow-list can sign in and see data. Row Level Security enforces this on every table and on the receipts bucket.
+- Only users on the allow-list can sign in and see data. Row Level Security enforces this on every table.
 
 ---
 
@@ -122,5 +124,4 @@ src/app/api/export/route.ts  CSV export
 - **Authorization**: `public.is_member()` is checked by every RLS policy, so a user needs an active profile, and profiles exist only for allow-listed emails. Server pages also check this through `requireMember()`.
 - **Integrity**: the database sets `created_by` and `updated_by` from the session, so a user can't spoof them. Amounts must be positive. A composite foreign key stops records from mixing across divisions.
 - **Audit**: a trigger writes every insert, update and delete to `expense_audit`, which clients can't modify.
-- **Receipts**: kept in a private bucket, limited to 10 MB and to image or PDF types. They're served only through signed URLs that expire after one hour.
 - **CSV export**: values are escaped so that a cell can't run a spreadsheet formula.

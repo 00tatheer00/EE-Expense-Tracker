@@ -18,11 +18,11 @@ export function ShareBar({ segments }: { segments: { label: string; value: numbe
               />
             ))}
       </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2">
         {segments.map((s) => (
           <div key={s.label} className="flex items-center gap-2 text-xs">
             <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: s.color }} />
-            <span className="truncate text-ink-muted">{s.label}</span>
+            <span className="min-w-0 truncate text-ink-muted">{s.label}</span>
             <span className="ml-auto font-medium tabular-nums text-ink">
               {total ? `${((s.value / total) * 100).toFixed(1)}%` : "—"}
             </span>

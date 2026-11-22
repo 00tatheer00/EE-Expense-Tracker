@@ -192,7 +192,10 @@ function MoreSheet({
   pathname: string;
 }) {
   return (
-    <div className={cn("fixed inset-0 z-50 lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!open}>
+    <div
+      className={cn("fixed inset-0 z-50 lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")}
+      inert={!open}
+    >
       <div
         className={cn("absolute inset-0 bg-navy-950/40 transition-opacity duration-200", open ? "opacity-100" : "opacity-0")}
         onClick={onClose}

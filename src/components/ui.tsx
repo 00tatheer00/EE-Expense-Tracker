@@ -56,6 +56,31 @@ export function Delta({ value, invert = true }: { value: number | null; invert?:
   );
 }
 
+/** "↗ 12.5% vs last month" — or a plain note when there is nothing to compare against. */
+export function Compare({
+  current,
+  previous,
+  label,
+  emptyText,
+}: {
+  current: number;
+  previous: number;
+  /** e.g. "last month" → "↗ 12% vs last month" */
+  label: string;
+  /** e.g. "No spending last month to compare" */
+  emptyText: string;
+}) {
+  if (!previous) {
+    return <span className="text-ink-subtle">{emptyText}</span>;
+  }
+  const change = ((current - previous) / previous) * 100;
+  return (
+    <span className="flex flex-wrap items-center gap-x-1.5">
+      <Delta value={change} /> <span>vs {label}</span>
+    </span>
+  );
+}
+
 export function StatCard({
   label,
   value,

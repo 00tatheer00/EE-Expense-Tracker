@@ -58,7 +58,9 @@ export function FilterBar({
   }, [q]);
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    // Only the phone bottom-sheet needs the page locked; on desktop the panel is inline.
+    const isPhone = window.matchMedia("(max-width: 639px)").matches;
+    document.body.style.overflow = open && isPhone ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -223,7 +225,10 @@ export function FilterBar({
       )}
 
       {/* Mobile: bottom sheet */}
-      <div className={cn("fixed inset-0 z-50 sm:hidden", open ? "pointer-events-auto" : "pointer-events-none")}>
+      <div
+        className={cn("fixed inset-0 z-50 sm:hidden", open ? "pointer-events-auto" : "pointer-events-none")}
+        inert={!open}
+      >
         <div
           className={cn("absolute inset-0 bg-navy-950/40 transition-opacity", open ? "opacity-100" : "opacity-0")}
           onClick={() => setOpen(false)}
