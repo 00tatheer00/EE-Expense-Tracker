@@ -127,7 +127,7 @@ export default async function ReportsPage({
       <div className="no-print">
         <FilterBar
           showSort={false}
-          divisions={divisions.map((d) => ({ id: d.id, name: d.short_name }))}
+          divisions={divisions.map((d) => ({ id: d.id, name: d.short_name, color: d.color }))}
           categories={categories.map((c) => ({ id: c.id, name: c.name, division_id: c.division_id }))}
           users={users.map((u) => ({ id: u.id, name: u.full_name }))}
         />

@@ -62,7 +62,7 @@ export default async function DashboardPage({
   return (
     <>
       <PageHeader
-        title={`Welcome, ${firstName}`}
+        title={`Hi, ${firstName} 👋`}
         description="Combined overview of Emerging Edge, EEST and STYLONE."
         actions={
           <>
@@ -70,7 +70,7 @@ export default async function DashboardPage({
             <Link href={`/reports?from=${year}-01-01&to=${year}-12-31`} className="btn-secondary">
               Reports
             </Link>
-            <Link href="/expenses/new" className="btn-success">
+            <Link href="/expenses/new" className="btn-success hidden sm:inline-flex">
               <Plus className="h-4 w-4" /> Add expense
             </Link>
           </>
@@ -78,7 +78,7 @@ export default async function DashboardPage({
       />
 
       {/* KPIs */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Total combined (all time)"
           value={formatPKR(s.allTime)}
@@ -118,12 +118,12 @@ export default async function DashboardPage({
       </section>
 
       {/* Division summaries */}
-      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="no-scrollbar -mx-4 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mt-6 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0">
         {perDivision.map(({ division: d, yearTotal, yearCount, thisMonth, allTime }) => (
           <Link
             key={d.id}
             href={`/divisions/${d.slug}?year=${year}`}
-            className="card group relative overflow-hidden p-5 transition hover:shadow-pop sm:p-6"
+            className="card group relative w-[84%] shrink-0 snap-start overflow-hidden p-5 transition hover:shadow-pop active:scale-[0.99] sm:p-6 md:w-auto"
           >
             <div className="absolute inset-x-0 top-0 h-1" style={{ background: d.color }} />
             <div className="flex items-start justify-between">

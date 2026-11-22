@@ -23,17 +23,60 @@ export type ExpenseEmailPayload = {
 
 let transporter: nodemailer.Transporter | null = null;
 
+function smtpSettings() {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  let pass = process.env.SMTP_PASS?.trim();
+  // Gmail shows App passwords as "abcd efgh ijkl mnop" — accept them pasted with spaces.
+  if (pass && host?.includes("gmail")) pass = pass.replace(/\s+/g, "");
+  const port = Number(process.env.SMTP_PORT?.trim() || 465);
+  const secure = (process.env.SMTP_SECURE?.trim() || (port === 465 ? "true" : "false")) === "true";
+  const from = process.env.EMAIL_FROM?.trim().replace(/^["']|["']$/g, "") || user;
+  return { host, user, pass, port, secure, from };
+}
+
+/** Non-secret summary of the email configuration, for the Account page. */
+export function emailConfigStatus() {
+  const s = smtpSettings();
+  return {
+    demo: DEMO,
+    configured: Boolean(s.host && s.user && s.pass),
+    host: s.host ?? null,
+    user: s.user ?? null,
+    from: s.from ?? null,
+    port: s.port,
+    hasPassword: Boolean(s.pass),
+  };
+}
+
 function getTransporter() {
   if (transporter) return transporter;
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  const s = smtpSettings();
+  if (!s.host || !s.user || !s.pass) return null;
   transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT ?? 465),
-    secure: (SMTP_SECURE ?? "true") === "true",
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    host: s.host,
+    port: s.port,
+    secure: s.secure,
+    auth: { user: s.user, pass: s.pass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
   });
   return transporter;
+}
+
+/** Turns common SMTP failures into plain-language guidance. */
+export function explainEmailError(message: string) {
+  const m = message.toLowerCase();
+  if (m.includes("535") || m.includes("badcredentials") || m.includes("username and password not accepted"))
+    return "Gmail rejected the login. Make sure SMTP_USER is the full Gmail address and SMTP_PASS is the 16-letter App password (not the normal Gmail password), then redeploy.";
+  if (m.includes("534") || m.includes("application-specific password"))
+    return "Gmail requires an App password. Turn on 2-Step Verification and create one at myaccount.google.com/apppasswords.";
+  if (m.includes("timeout") || m.includes("econnrefused") || m.includes("enotfound"))
+    return "Could not reach the mail server. Check SMTP_HOST=smtp.gmail.com and SMTP_PORT=465.";
+  if (m.includes("not configured"))
+    return "Email settings are missing. Add SMTP_HOST, SMTP_USER, SMTP_PASS and EMAIL_FROM in Vercel, then redeploy.";
+  return message;
 }
 
 function row(label: string, value: string | null | undefined) {
@@ -134,15 +177,39 @@ export async function sendExpenseNotification(
   try {
     const { subject, html, text } = renderExpenseEmail(e);
     await t.sendMail({
-      from: process.env.EMAIL_FROM ?? process.env.SMTP_USER,
+      from: smtpSettings().from,
       to: recipients.join(", "),
       subject,
       html,
       text,
     });
+    console.log(`[email] expense notification sent to ${recipients.length} recipients`);
     return { sent: true };
   } catch (err) {
     console.error("[email] failed to send expense notification", err);
     return { sent: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+/** Sends a short test email to one address. Returns a human-readable error on failure. */
+export async function sendTestEmail(to: string, name: string): Promise<{ sent: boolean; error?: string }> {
+  if (DEMO) return { sent: false, error: "Email sending is disabled in demo mode." };
+  const t = getTransporter();
+  if (!t) return { sent: false, error: explainEmailError("not configured") };
+  try {
+    await t.sendMail({
+      from: smtpSettings().from,
+      to,
+      subject: "Test email · EE Expense Tracker",
+      text: `Hi ${name},\n\nEmail notifications are working. You will receive an email like this whenever a new expense is added.\n\n— EE Expense Tracker`,
+      html: `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:24px auto;padding:24px;border:1px solid #E6E9F0;border-radius:14px">
+        <div style="font-size:18px;font-weight:700;color:#0B1A3A">Email notifications are working ✅</div>
+        <p style="font-size:14px;color:#475569;line-height:1.6">Hi ${escapeHtml(name)}, this is a test from EE Expense Tracker. Every time someone adds a new expense, all authorized users will receive a notification from this address.</p>
+      </div>`,
+    });
+    return { sent: true };
+  } catch (err) {
+    console.error("[email] test email failed", err);
+    return { sent: false, error: explainEmailError(err instanceof Error ? err.message : String(err)) };
   }
 }

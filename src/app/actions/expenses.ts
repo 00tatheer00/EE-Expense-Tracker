@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireMember } from "@/lib/data";
 import { PAYMENT_METHODS, RECEIPT_BUCKET } from "@/lib/constants";
-import { sendExpenseNotification } from "@/lib/email";
+import { explainEmailError, sendExpenseNotification, sendTestEmail } from "@/lib/email";
 
 const optionalText = (max: number) =>
   z
@@ -98,7 +98,12 @@ export async function createExpense(input: ExpenseInput): Promise<ActionResult> 
   );
 
   revalidateAll();
-  return { ok: true, id: data.id, emailSent: mail.sent, emailError: mail.error };
+  return {
+    ok: true,
+    id: data.id,
+    emailSent: mail.sent,
+    emailError: mail.error && mail.error !== "demo" ? explainEmailError(mail.error) : mail.error,
+  };
 }
 
 export async function updateExpense(id: string, input: ExpenseInput): Promise<ActionResult> {
@@ -205,4 +210,12 @@ export async function setCategoryActive(id: string, isActive: boolean) {
   if (error) return { ok: false as const, error: error.message };
   revalidateAll();
   return { ok: true as const };
+}
+
+// ---------------------------------------------------------------------
+// Email diagnostics
+// ---------------------------------------------------------------------
+export async function sendTestEmailToMe() {
+  const { profile } = await requireMember();
+  return sendTestEmail(profile.email, profile.full_name);
 }

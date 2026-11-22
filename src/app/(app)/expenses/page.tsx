@@ -7,6 +7,7 @@ import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
 import { formatDate, formatPKR } from "@/lib/utils";
 import { DivisionBadge, EmptyState, PageHeader } from "@/components/ui";
 import { FilterBar } from "@/components/FilterBar";
+import { MobileExpenseList } from "@/components/MobileExpenseList";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Expenses" };
@@ -49,7 +50,7 @@ export default async function ExpensesPage({
             <a href={`/api/export?${filtersToQuery(filters)}`} className="btn-secondary">
               <Download className="h-4 w-4" /> Export CSV
             </a>
-            <Link href="/expenses/new" className="btn-success">
+            <Link href="/expenses/new" className="btn-success hidden sm:inline-flex">
               <Plus className="h-4 w-4" /> Add expense
             </Link>
           </>
@@ -57,7 +58,7 @@ export default async function ExpensesPage({
       />
 
       <FilterBar
-        divisions={divisions.map((d) => ({ id: d.id, name: d.short_name }))}
+        divisions={divisions.map((d) => ({ id: d.id, name: d.short_name, color: d.color }))}
         categories={categories.map((c) => ({ id: c.id, name: c.name, division_id: c.division_id }))}
         users={users.map((u) => ({ id: u.id, name: u.full_name }))}
       />
@@ -71,7 +72,7 @@ export default async function ExpensesPage({
         </span>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card md:overflow-hidden">
         {expenses.length === 0 ? (
           <EmptyState
             title="No expenses found"
@@ -126,34 +127,10 @@ export default async function ExpensesPage({
             </div>
 
             {/* Mobile list */}
-            <ul className="divide-y divide-line md:hidden">
-              {expenses.map((e) => (
-                <li key={e.id}>
-                  <Link href={`/expenses/${e.id}`} className="block px-4 py-3.5 active:bg-slate-50">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-ink">
-                          <span className="truncate">{e.title}</span>
-                          {e.receipt_path && <Paperclip className="h-3.5 w-3.5 shrink-0 text-ink-subtle" />}
-                        </div>
-                        <div className="mt-0.5 truncate text-xs text-ink-subtle">
-                          {e.category?.name} · {e.paid_to}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right text-sm font-semibold tabular-nums text-navy-900">
-                        {formatPKR(e.amount)}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      {e.division && <DivisionBadge name={e.division.short_name} color={e.division.color} />}
-                      <span className="text-[11px] text-ink-subtle">
-                        {formatDate(e.expense_date)} · {e.creator?.full_name?.split(" ")[0]}
-                      </span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <MobileExpenseList
+              expenses={expenses}
+              groupByDate={!filters.sort || filters.sort === "date_asc"}
+            />
           </>
         )}
       </div>

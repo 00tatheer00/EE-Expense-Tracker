@@ -78,7 +78,7 @@ export default async function ExpenseDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; updated?: string; email?: string }>;
+  searchParams: Promise<{ created?: string; updated?: string; email?: string; reason?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -142,7 +142,15 @@ export default async function ExpenseDetailPage({
             Expense saved.{" "}
             {sp.email === "sent"
               ? "An email notification has been sent to all authorized users."
-              : "The email notification could not be sent — check the SMTP settings. The expense itself is saved."}
+              : "The expense is saved, but the email notification could not be sent."}
+            {sp.email !== "sent" && sp.reason && (
+              <span className="mt-1 block text-xs opacity-90">Reason: {sp.reason.slice(0, 300)}</span>
+            )}
+            {sp.email !== "sent" && (
+              <Link href="/account#email" className="mt-1 block text-xs font-semibold underline">
+                Check email settings →
+              </Link>
+            )}
           </span>
         </div>
       )}
