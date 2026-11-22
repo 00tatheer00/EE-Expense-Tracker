@@ -331,6 +331,22 @@ revoke execute on function public.expense_totals(uuid, uuid, text, uuid, date, d
 grant execute on function public.expense_totals(uuid, uuid, text, uuid, date, date, text) to authenticated;
 
 -- ---------------------------------------------------------------------
+-- 7c. Realtime: open screens refresh live when expenses/categories change
+--     (Realtime applies the same RLS, so only members receive events)
+-- ---------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'expenses') then
+    alter publication supabase_realtime add table public.expenses;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'categories') then
+    alter publication supabase_realtime add table public.categories;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
 -- 8. Receipt storage (private bucket, 10 MB, images + PDF)
 -- ---------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

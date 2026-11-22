@@ -19,6 +19,7 @@ import {
 import { Logo, LogoMark } from "@/components/Logo";
 import { cn, initials } from "@/lib/utils";
 import { DEMO } from "@/lib/demo/config";
+import { LiveRefresh } from "@/components/LiveRefresh";
 
 type NavDivision = { slug: string; name: string; color: string };
 
@@ -297,6 +298,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen">
+      <LiveRefresh />
       {/* Desktop sidebar */}
       <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-64 bg-navy-900 lg:block">
         <Sidebar pathname={pathname} divisions={divisions} user={user} />
