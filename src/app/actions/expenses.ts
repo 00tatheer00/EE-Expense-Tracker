@@ -30,8 +30,6 @@ const ExpenseSchema = z.object({
   purpose: optionalText(200),
   payment_method: z.enum(PAYMENT_METHODS, { errorMap: () => ({ message: "Choose a payment method" }) }),
   notes: optionalText(2000),
-  receipt_path: optionalText(500),
-  receipt_name: optionalText(255),
 });
 
 export type ExpenseInput = z.input<typeof ExpenseSchema>;
@@ -88,7 +86,6 @@ export async function createExpense(input: ExpenseInput): Promise<ActionResult> 
       purpose: data.purpose,
       payment_method: data.payment_method,
       notes: data.notes,
-      hasReceipt: Boolean(data.receipt_path),
       divisionName: data.division?.name ?? "—",
       divisionColor: data.division?.color ?? "#2B4FB8",
       categoryName: data.category?.name ?? "—",
@@ -113,23 +110,12 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Ac
 
   const { supabase } = await requireMember();
 
-  const { data: existing } = await supabase
-    .from("expenses")
-    .select("receipt_path")
-    .eq("id", id)
-    .maybeSingle();
-  if (!existing) return { ok: false, error: "Expense not found." };
-
-  const { error } = await supabase.from("expenses").update(parsed.data).eq("id", id);
+  const { data: updated, error } = await supabase.from("expenses").update(parsed.data).eq("id", id).select("id");
   if (error) {
     console.error("[updateExpense]", error);
     return { ok: false, error: error.message };
   }
-
-  // Clean up a replaced or removed receipt file.
-  if (existing.receipt_path && existing.receipt_path !== parsed.data.receipt_path) {
-    await supabase.storage.from(RECEIPT_BUCKET).remove([existing.receipt_path]);
-  }
+  if (!updated?.length) return { ok: false, error: "This expense no longer exists — someone may have deleted it." };
 
   revalidateAll();
   return { ok: true, id };
@@ -154,16 +140,6 @@ export async function deleteExpense(id: string): Promise<ActionResult> {
 
   revalidateAll();
   return { ok: true, id };
-}
-
-/** Removes an uploaded file that never got attached (e.g. save failed). */
-export async function discardUpload(path: string) {
-  const { supabase } = await requireMember();
-  const { count } = await supabase
-    .from("expenses")
-    .select("id", { count: "exact", head: true })
-    .eq("receipt_path", path);
-  if (!count) await supabase.storage.from(RECEIPT_BUCKET).remove([path]);
 }
 
 // ---------------------------------------------------------------------

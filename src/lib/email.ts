@@ -14,7 +14,6 @@ export type ExpenseEmailPayload = {
   purpose: string | null;
   payment_method: string;
   notes: string | null;
-  hasReceipt: boolean;
   divisionName: string;
   divisionColor: string;
   categoryName: string;
@@ -128,7 +127,6 @@ export function renderExpenseEmail(e: ExpenseEmailPayload) {
             ${row("Payment method", e.payment_method)}
             ${row("Description", e.description)}
             ${row("Additional notes", e.notes)}
-            ${row("Receipt attached", e.hasReceipt ? "Yes" : "No")}
           </table>
         </td></tr>
         ${
@@ -158,7 +156,6 @@ export function renderExpenseEmail(e: ExpenseEmailPayload) {
     `Payment method: ${e.payment_method}`,
     `Description: ${e.description ?? "-"}`,
     `Notes: ${e.notes ?? "-"}`,
-    `Receipt attached: ${e.hasReceipt ? "Yes" : "No"}`,
     link ? `\nView: ${link}` : "",
   ].join("\n");
 

@@ -27,7 +27,8 @@ export function DeleteExpenseButton({ id, title }: { id: string; title: string }
         </div>
         <h3 className="mt-4 text-base font-semibold text-navy-900">Delete this expense?</h3>
         <p className="mt-1 text-sm text-ink-subtle">
-          “{title}” and its receipt will be removed. The deletion is recorded in the audit log.
+          “{title}” will be removed from all totals and reports. Your name will be shown to the team as the person
+          who deleted it (under Activity).
         </p>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         <div className="mt-6 flex gap-2">

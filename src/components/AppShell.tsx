@@ -7,6 +7,7 @@ import {
   BarChart3,
   ChevronRight,
   FileSpreadsheet,
+  History,
   Home,
   LayoutDashboard,
   LogOut,
@@ -29,6 +30,7 @@ const MAIN_NAV = [
   { href: "/reports", label: "Reports", icon: FileSpreadsheet },
 ];
 const MANAGE_NAV = [
+  { href: "/activity", label: "Activity", icon: History },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/account", label: "Account", icon: UserCog },
 ];
@@ -286,7 +288,10 @@ export function AppShell({
   // Full-screen form pages have their own sticky Save bar instead of tabs.
   const isFormPage = pathname === "/expenses/new" || /^\/expenses\/[^/]+\/edit$/.test(pathname);
   const moreActive =
-    pathname.startsWith("/divisions") || pathname.startsWith("/categories") || pathname.startsWith("/account");
+    pathname.startsWith("/divisions") ||
+    pathname.startsWith("/categories") ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/activity");
 
   useEffect(() => setMoreOpen(false), [pathname]);
   useEffect(() => {

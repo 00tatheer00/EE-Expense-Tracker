@@ -31,7 +31,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     purpose: e.purpose,
     payment_method: e.payment_method,
     notes: e.notes,
-    hasReceipt: Boolean(e.receipt_path),
     divisionName: e.division?.name ?? "—",
     divisionColor: e.division?.color ?? "#2B4FB8",
     categoryName: e.category?.name ?? "—",

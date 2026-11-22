@@ -6,8 +6,6 @@ import {
   CalendarDays,
   CheckCircle2,
   CreditCard,
-  Download,
-  FileText,
   History,
   Mail,
   MapPin,
@@ -17,7 +15,8 @@ import {
   UserRound,
 } from "lucide-react";
 import { getProfiles, requireMember } from "@/lib/data";
-import { RECEIPT_BUCKET } from "@/lib/constants";
+import { getDeletion } from "@/lib/activity";
+import { DeletedExpense } from "@/components/DeletedExpense";
 import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
 import { formatDate, formatDateTime, formatPKR, initials } from "@/lib/utils";
 import { personColor } from "@/components/AddedBy";
@@ -46,7 +45,6 @@ const FIELD_LABELS: Record<string, string> = {
   purpose: "event/purpose",
   payment_method: "payment method",
   notes: "notes",
-  receipt_path: "receipt",
   category_id: "category",
   division_id: "division",
 };
@@ -97,17 +95,14 @@ export default async function ExpenseDetailPage({
     getProfiles(),
   ]);
   const e = data as ExpenseWithRelations | null;
-  if (!e) notFound();
+  if (!e) {
+    const deletion = await getDeletion(id);
+    if (!deletion) notFound();
+    return <DeletedExpense item={deletion.item} snapshot={deletion.snapshot} />;
+  }
 
   const names = new Map(profiles.map((p) => [p.id, p.full_name]));
 
-  let receiptUrl: string | null = null;
-  if (e.receipt_path) {
-    const { data: signed } = await supabase.storage.from(RECEIPT_BUCKET).createSignedUrl(e.receipt_path, 60 * 60);
-    receiptUrl = signed?.signedUrl ?? null;
-  }
-  const isImage = /\.(jpe?g|png|webp|heic)$/i.test(e.receipt_path ?? "");
-  const isPdf = /\.pdf$/i.test(e.receipt_path ?? "");
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -231,45 +226,8 @@ export default async function ExpenseDetailPage({
         )}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="card card-pad lg:col-span-3">
-          <div className="flex items-center justify-between">
-            <div className="card-title">Receipt / invoice</div>
-            {receiptUrl && (
-              <a href={receiptUrl} target="_blank" rel="noreferrer" className="btn-ghost btn-sm no-print">
-                <Download className="h-3.5 w-3.5" /> Open
-              </a>
-            )}
-          </div>
-          <div className="mt-4">
-            {!e.receipt_path ? (
-              <div className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-subtle">
-                No receipt attached.{" "}
-                <Link href={`/expenses/${e.id}/edit`} className="font-medium text-emerald-600 hover:underline">
-                  Add one
-                </Link>
-              </div>
-            ) : !receiptUrl ? (
-              <div className="text-sm text-accent-600">The receipt file could not be loaded.</div>
-            ) : isImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={receiptUrl}
-                alt={e.receipt_name ?? "Receipt"}
-                className="max-h-[520px] w-full rounded-xl border border-line bg-slate-50 object-contain"
-              />
-            ) : isPdf ? (
-              <iframe src={receiptUrl} title="Receipt PDF" className="h-[520px] w-full rounded-xl border border-line" />
-            ) : (
-              <a href={receiptUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-line p-3 hover:bg-slate-50">
-                <FileText className="h-5 w-5 text-navy-500" />
-                <span className="text-sm font-medium">{e.receipt_name ?? "Download receipt"}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="card card-pad lg:col-span-2">
+      <div className="mt-6">
+        <div className="card card-pad">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-ink-subtle" />
             <div className="card-title">History</div>

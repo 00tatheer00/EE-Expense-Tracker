@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Check, FileText, Loader2, Mail, UploadCloud, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { createExpense, discardUpload, updateExpense, type ExpenseInput } from "@/app/actions/expenses";
-import { MAX_RECEIPT_BYTES, PAYMENT_METHODS, RECEIPT_ACCEPT, RECEIPT_BUCKET } from "@/lib/constants";
+import { Check, Loader2, Mail } from "lucide-react";
+import { createExpense, updateExpense, type ExpenseInput } from "@/app/actions/expenses";
+import { PAYMENT_METHODS } from "@/lib/constants";
 import type { Category, Division, Expense } from "@/lib/types";
 import { cn, todayPK } from "@/lib/utils";
 
@@ -48,8 +47,6 @@ function Field({
 export function ExpenseForm({ divisions, categories, expense, defaultDivisionId }: Props) {
   const router = useRouter();
   const isEdit = Boolean(expense);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
 
   const [values, setValues] = useState({
     division_id: expense?.division_id ?? defaultDivisionId ?? "",
@@ -64,16 +61,10 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
     description: expense?.description ?? "",
     notes: expense?.notes ?? "",
   });
-  const [existingReceipt, setExistingReceipt] = useState<{ path: string; name: string } | null>(
-    expense?.receipt_path ? { path: expense.receipt_path, name: expense.receipt_name ?? "Receipt" } : null,
-  );
-  const [file, setFile] = useState<File | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "uploading" | "saving">("idle");
+  const [status, setStatus] = useState<"idle" | "saving">("idle");
 
-  const division = divisions.find((d) => d.id === values.division_id);
   const divisionCats = useMemo(
     () =>
       categories.filter(
@@ -85,20 +76,6 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
   function set<K extends keyof typeof values>(key: K, v: string) {
     setValues((s) => ({ ...s, [key]: v }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: "" }));
-  }
-
-  function pickFile(f: File | undefined | null) {
-    if (!f) return;
-    if (f.size > MAX_RECEIPT_BYTES) {
-      setErrors((e) => ({ ...e, receipt: "File is larger than 10 MB." }));
-      return;
-    }
-    if (!RECEIPT_ACCEPT.split(",").includes(f.type)) {
-      setErrors((e) => ({ ...e, receipt: "Use a JPG, PNG, WEBP, HEIC image or a PDF." }));
-      return;
-    }
-    setErrors((e) => ({ ...e, receipt: "" }));
-    setFile(f);
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -118,37 +95,16 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
       return;
     }
 
-    let receipt_path = existingReceipt?.path ?? null;
-    let receipt_name = existingReceipt?.name ?? null;
-    let uploadedPath: string | null = null;
-
     try {
-      if (file) {
-        setStatus("uploading");
-        const supabase = createClient();
-        const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const path = `${division?.slug ?? "general"}/${values.expense_date.slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(RECEIPT_BUCKET)
-          .upload(path, file, { contentType: file.type, upsert: false });
-        if (error) throw new Error(`Receipt upload failed: ${error.message}`);
-        uploadedPath = path;
-        receipt_path = path;
-        receipt_name = file.name.slice(0, 255);
-      }
-
       setStatus("saving");
       const payload: ExpenseInput = {
         ...values,
         amount: Number(values.amount),
         payment_method: values.payment_method as ExpenseInput["payment_method"],
-        receipt_path,
-        receipt_name,
       };
       const res = isEdit ? await updateExpense(expense!.id, payload) : await createExpense(payload);
 
       if (!res.ok) {
-        if (uploadedPath) await discardUpload(uploadedPath);
         setErrors(res.fieldErrors ?? {});
         setFormError(res.error);
         setStatus("idle");
@@ -161,7 +117,6 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
       router.push(`/expenses/${res.id}${qs}`);
       router.refresh();
     } catch (err) {
-      if (uploadedPath) await discardUpload(uploadedPath).catch(() => {});
       setFormError(err instanceof Error ? err.message : "Something went wrong.");
       setStatus("idle");
     }
@@ -354,101 +309,6 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
         </div>
       </section>
 
-      {/* Receipt */}
-      <section className="card card-pad">
-        <div className="card-title">Receipt or invoice</div>
-        <div className="card-sub">Optional · JPG, PNG, WEBP, HEIC or PDF up to 10 MB</div>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept={RECEIPT_ACCEPT}
-          className="hidden"
-          onChange={(e) => pickFile(e.target.files?.[0])}
-        />
-        {/* Opens the camera directly on phones */}
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => pickFile(e.target.files?.[0])}
-        />
-
-        {file || existingReceipt ? (
-          <div className="mt-4 flex items-center gap-3 rounded-xl border border-line bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-navy-500 shadow-card">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-ink">{file ? file.name : existingReceipt!.name}</div>
-              <div className="text-xs text-ink-subtle">
-                {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · ready to upload` : "Currently attached"}
-              </div>
-            </div>
-            <button type="button" className="btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
-              Replace
-            </button>
-            <button
-              type="button"
-              className="rounded-lg p-1.5 text-ink-subtle hover:bg-white hover:text-red-600"
-              onClick={() => {
-                setFile(null);
-                setExistingReceipt(null);
-                if (fileRef.current) fileRef.current.value = "";
-                if (cameraRef.current) cameraRef.current.value = "";
-              }}
-              aria-label="Remove receipt"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:hidden">
-            <button
-              type="button"
-              onClick={() => cameraRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-navy-900 px-3 py-5 text-sm font-medium text-white active:scale-[0.98]"
-            >
-              <Camera className="h-6 w-6" /> Take photo
-            </button>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-line px-3 py-5 text-sm font-medium text-navy-900 active:bg-slate-50"
-            >
-              <UploadCloud className="h-6 w-6 text-navy-500" /> Choose file
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              pickFile(e.dataTransfer.files?.[0]);
-            }}
-            className={cn(
-              "mt-4 hidden w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition sm:flex",
-              dragging ? "border-emerald-500 bg-emerald-50" : "border-line hover:border-slate-300 hover:bg-slate-50",
-            )}
-          >
-            <UploadCloud className="h-7 w-7 text-navy-500" />
-            <span className="mt-2 text-sm font-medium text-navy-900">Click to upload or drag & drop</span>
-            <span className="mt-0.5 text-xs text-ink-subtle">Images or PDF</span>
-          </button>
-          </>
-        )}
-        {errors.receipt && <p className="field-error">{errors.receipt}</p>}
-      </section>
-
       {formError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</div>
       )}
@@ -468,7 +328,7 @@ export function ExpenseForm({ divisions, categories, expense, defaultDivisionId 
           </button>
           <button type="submit" className="btn-success h-12 flex-[2] text-[15px] sm:h-10 sm:flex-none sm:min-w-[160px] sm:text-sm" disabled={busy}>
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {status === "uploading" ? "Uploading receipt…" : status === "saving" ? "Saving…" : isEdit ? "Save changes" : "Save expense"}
+            {status === "saving" ? "Saving…" : isEdit ? "Save changes" : "Save expense"}
           </button>
         </div>
       </div>

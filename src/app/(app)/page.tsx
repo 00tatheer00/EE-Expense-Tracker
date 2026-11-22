@@ -2,14 +2,14 @@ import Link from "next/link";
 import { ArrowRight, CalendarRange, Layers, Plus, Receipt, Wallet } from "lucide-react";
 import { getCategories, getCategoryMonthly, getDivisions, getMonthly, requireMember } from "@/lib/data";
 import { availableYears, divisionTotals, monthlySeries, summarize, yearlySeries } from "@/lib/analytics";
-import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
 import { formatPKR, pctChange, todayPK } from "@/lib/utils";
 import { Delta, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { RankedBars } from "@/components/charts/RankedBars";
 import { ShareBar } from "@/components/charts/ShareBar";
 import { YearSelect } from "@/components/YearSelect";
-import { RecentExpenses } from "@/components/RecentExpenses";
+import { ActivityList } from "@/components/ActivityList";
+import { getActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -18,20 +18,19 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
-  const { supabase, profile } = await requireMember();
+  const { profile } = await requireMember();
   const sp = await searchParams;
   const today = todayPK();
   const currentYear = Number(today.slice(0, 4));
   const year = Number(sp.year) || currentYear;
 
-  const [divisions, categories, monthly, categoryRows, recentRes] = await Promise.all([
+  const [divisions, categories, monthly, categoryRows, activity] = await Promise.all([
     getDivisions(),
     getCategories(true),
     getMonthly(),
     getCategoryMonthly({ from: `${year}-01-01`, to: `${year}-12-01` }),
-    supabase.from("expenses").select(EXPENSE_SELECT).order("created_at", { ascending: false }).limit(8),
+    getActivity({ limit: 8 }),
   ]);
-  const recent = (recentRes.data ?? []) as ExpenseWithRelations[];
 
   const s = summarize(monthly, year, today);
   const perDivision = divisionTotals(monthly, divisions, year, today);
@@ -57,7 +56,6 @@ export default async function DashboardPage({
   }
 
   const firstName = profile.full_name.replace(/^sir\s+/i, "").split(" ")[0];
-  const hasData = s.allCount > 0;
 
   return (
     <>
@@ -240,15 +238,15 @@ export default async function DashboardPage({
       <section className="card mt-6 overflow-hidden">
         <div className="flex items-center justify-between px-5 pb-3 pt-5 sm:px-6">
           <div>
-            <div className="card-title">Recent activity</div>
-            <div className="card-sub">Latest expenses added by the team</div>
+            <div className="card-title">Team activity</div>
+            <div className="card-sub">Who added, edited or deleted what</div>
           </div>
-          <Link href="/expenses" className="btn-ghost btn-sm">
+          <Link href="/activity" className="btn-ghost btn-sm">
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        {hasData ? (
-          <RecentExpenses expenses={recent} />
+        {activity.length ? (
+          <ActivityList items={activity} compact />
         ) : (
           <EmptyState
             title="No expenses yet"
