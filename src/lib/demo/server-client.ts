@@ -305,6 +305,26 @@ export function createDemoServerClient(userId: string | undefined) {
   const s = getStore();
   return {
     from: (table: string) => new DemoQuery(table, uid),
+    rpc(name: string, args: Record<string, string | null>) {
+      if (name !== "expense_totals") throw new Error(`Demo: unknown rpc ${name}`);
+      const q = args.p_q?.toLowerCase();
+      const rows = s.expenses.filter(
+        (e) =>
+          (!args.p_division || e.division_id === args.p_division) &&
+          (!args.p_category || e.category_id === args.p_category) &&
+          (!args.p_method || e.payment_method === args.p_method) &&
+          (!args.p_user || e.created_by === args.p_user) &&
+          (!args.p_from || String(e.expense_date) >= args.p_from) &&
+          (!args.p_to || String(e.expense_date) <= args.p_to) &&
+          (!q ||
+            ["title", "paid_to", "purpose", "location", "description", "notes"].some((c) =>
+              String(e[c] ?? "").toLowerCase().includes(q),
+            )),
+      );
+      const result = { total: rows.reduce((t, e) => t + Number(e.amount), 0), count: rows.length };
+      const done = Promise.resolve({ data: result, error: null });
+      return { single: () => done, then: done.then.bind(done) };
+    },
     auth: {
       async getUser() {
         const p = uid ? s.profiles.find((x) => x.id === uid) : null;

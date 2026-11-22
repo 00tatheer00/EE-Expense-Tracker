@@ -10,6 +10,12 @@ const securityHeaders = [
 const nextConfig = {
   serverExternalPackages: ["nodemailer"],
   poweredByHeader: false,
+  experimental: {
+    // Keep visited pages in the browser for a short time so tab switches and
+    // "back" are instant. Saving/editing/deleting clears this cache immediately.
+    staleTimes: { dynamic: 30, static: 300 },
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

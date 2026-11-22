@@ -19,7 +19,8 @@ import {
 import { getProfiles, requireMember } from "@/lib/data";
 import { RECEIPT_BUCKET } from "@/lib/constants";
 import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
-import { formatDate, formatDateTime, formatPKR } from "@/lib/utils";
+import { formatDate, formatDateTime, formatPKR, initials } from "@/lib/utils";
+import { personColor } from "@/components/AddedBy";
 import { DivisionBadge } from "@/components/ui";
 import { DeleteExpenseButton } from "@/components/DeleteExpenseButton";
 
@@ -166,13 +167,27 @@ export default async function ExpenseDetailPage({
           <div className="min-w-0">
             {e.division && <DivisionBadge name={e.division.name} color={e.division.color} />}
             <h1 className="mt-3 text-xl font-semibold text-navy-900 sm:text-2xl">{e.title}</h1>
-            <div className="mt-1 text-sm text-ink-subtle">
-              Added by <span className="font-medium text-ink">{e.creator?.full_name ?? "Unknown"}</span> ·{" "}
-              {formatDateTime(e.created_at)}
-              {e.updated_at !== e.created_at && e.updated_by && (
-                <> · edited by {names.get(e.updated_by) ?? "someone"}</>
-              )}
+            <div className="mt-3 inline-flex items-center gap-3 rounded-2xl border border-line bg-slate-50 py-2 pl-2 pr-4">
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                style={{ background: personColor(e.creator?.id) }}
+              >
+                {initials(e.creator?.full_name ?? "?")}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Added by</span>
+                <span className="block truncate text-[15px] font-semibold text-navy-900">
+                  {e.creator?.full_name ?? "Unknown"}
+                </span>
+                <span className="block text-xs text-ink-subtle">{formatDateTime(e.created_at)}</span>
+              </span>
             </div>
+            {e.updated_at !== e.created_at && e.updated_by && e.updated_by !== e.created_by && (
+              <div className="mt-2 text-xs text-ink-subtle">
+                Last edited by <span className="font-medium text-ink">{names.get(e.updated_by) ?? "someone"}</span> ·{" "}
+                {formatDateTime(e.updated_at)}
+              </div>
+            )}
           </div>
           <div className="sm:text-right">
             <div className="text-3xl font-semibold tracking-tight tabular-nums text-navy-900">

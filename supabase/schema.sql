@@ -220,6 +220,36 @@ select
 from public.expenses
 group by division_id, category_id, date_trunc('month', expense_date);
 
+-- Fast filtered totals for the expense list (sum + count computed in the DB).
+create or replace function public.expense_totals(
+  p_division uuid default null,
+  p_category uuid default null,
+  p_method   text default null,
+  p_user     uuid default null,
+  p_from     date default null,
+  p_to       date default null,
+  p_q        text default null
+)
+returns table (total numeric, count bigint)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select coalesce(sum(e.amount), 0)::numeric, count(*)
+  from public.expenses e
+  where (p_division is null or e.division_id = p_division)
+    and (p_category is null or e.category_id = p_category)
+    and (p_method   is null or e.payment_method = p_method)
+    and (p_user     is null or e.created_by = p_user)
+    and (p_from     is null or e.expense_date >= p_from)
+    and (p_to       is null or e.expense_date <= p_to)
+    and (coalesce(p_q, '') = '' or
+         e.title ilike '%' || p_q || '%' or e.paid_to ilike '%' || p_q || '%' or
+         e.purpose ilike '%' || p_q || '%' or e.location ilike '%' || p_q || '%' or
+         e.description ilike '%' || p_q || '%' or e.notes ilike '%' || p_q || '%');
+$$;
+
 -- ---------------------------------------------------------------------
 -- 7. Row Level Security
 -- ---------------------------------------------------------------------
@@ -297,6 +327,8 @@ grant all on public.allowed_users, public.profiles, public.divisions, public.cat
   to service_role;
 
 grant execute on function public.is_member() to authenticated;
+revoke execute on function public.expense_totals(uuid, uuid, text, uuid, date, date, text) from public, anon;
+grant execute on function public.expense_totals(uuid, uuid, text, uuid, date, date, text) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- 8. Receipt storage (private bucket, 10 MB, images + PDF)

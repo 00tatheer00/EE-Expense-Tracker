@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Download, Paperclip, Plus } from "lucide-react";
 import { getCategories, getDivisions, getProfiles, requireMember } from "@/lib/data";
-import { applyFilters, applySort, filtersToQuery, parseFilters } from "@/lib/filters";
+import { applyFilters, applySort, filtersToQuery, parseFilters, totalsArgs } from "@/lib/filters";
 import { PAGE_SIZE } from "@/lib/constants";
 import { EXPENSE_SELECT, type ExpenseWithRelations } from "@/lib/types";
 import { formatDate, formatPKR } from "@/lib/utils";
 import { DivisionBadge, EmptyState, PageHeader } from "@/components/ui";
 import { FilterBar } from "@/components/FilterBar";
 import { MobileExpenseList } from "@/components/MobileExpenseList";
+import { ClickableRow } from "@/components/ClickableRow";
+import { AddedBy } from "@/components/AddedBy";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Expenses" };
@@ -22,21 +24,25 @@ export default async function ExpensesPage({
   const page = Math.max(1, Number(sp.page) || 1);
   const { supabase } = await requireMember();
 
-  const [divisions, categories, users] = await Promise.all([getDivisions(), getCategories(true), getProfiles()]);
-
+  // Everything in parallel: one round-trip's worth of waiting.
   const listQuery = applySort(
-    applyFilters(supabase.from("expenses").select(EXPENSE_SELECT, { count: "exact" }), filters),
+    applyFilters(supabase.from("expenses").select(EXPENSE_SELECT), filters),
     filters.sort,
   ).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  const totalsQuery = supabase.rpc("expense_totals", totalsArgs(filters)).single<{ total: number; count: number }>();
 
-  const sumQuery = applyFilters(supabase.from("expenses").select("amount").limit(50000), filters);
-
-  const [{ data, count, error }, { data: amounts }] = await Promise.all([listQuery, sumQuery]);
+  const [divisions, categories, users, { data, error }, { data: totals }] = await Promise.all([
+    getDivisions(),
+    getCategories(true),
+    getProfiles(),
+    listQuery,
+    totalsQuery,
+  ]);
   if (error) throw error;
 
   const expenses = (data ?? []) as ExpenseWithRelations[];
-  const total = (amounts ?? []).reduce((s, r) => s + Number(r.amount), 0);
-  const totalCount = count ?? 0;
+  const total = Number(totals?.total ?? 0);
+  const totalCount = Number(totals?.count ?? 0);
   const pages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const qs = (p: number) => filtersToQuery(filters, { page: String(p) });
 
@@ -97,7 +103,7 @@ export default async function ExpensesPage({
                 </thead>
                 <tbody>
                   {expenses.map((e) => (
-                    <tr key={e.id} className="group hover:bg-slate-50/70">
+                    <ClickableRow key={e.id} href={`/expenses/${e.id}`}>
                       <td className="whitespace-nowrap text-ink-muted">{formatDate(e.expense_date)}</td>
                       <td className="max-w-[280px]">
                         <Link href={`/expenses/${e.id}`} className="block">
@@ -116,11 +122,13 @@ export default async function ExpensesPage({
                       </td>
                       <td className="text-ink-muted">{e.category?.name}</td>
                       <td className="whitespace-nowrap text-ink-muted">{e.payment_method}</td>
-                      <td className="whitespace-nowrap text-ink-muted">{e.creator?.full_name}</td>
+                      <td className="whitespace-nowrap text-sm">
+                        <AddedBy id={e.creator?.id} name={e.creator?.full_name} />
+                      </td>
                       <td className="whitespace-nowrap text-right font-semibold tabular-nums text-navy-900">
                         {formatPKR(e.amount, true)}
                       </td>
-                    </tr>
+                    </ClickableRow>
                   ))}
                 </tbody>
               </table>

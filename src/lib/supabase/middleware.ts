@@ -62,15 +62,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // A temporary Supabase/network failure must not take the whole site down:
-  // treat it as "signed out" so the user lands on the login page.
-  let user = null;
+  // Speed: getSession() reads the session cookie locally and only calls Supabase
+  // when the access token has expired and needs refreshing. This middleware only
+  // decides where to route; real authorization happens on the server (the JWT is
+  // verified by the database on every query, and RLS enforces membership).
+  let user: { id: string } | null = null;
   try {
-    ({
-      data: { user },
-    } = await supabase.auth.getUser());
+    const { data } = await supabase.auth.getSession();
+    user = data.session?.user ?? null;
   } catch (err) {
-    console.error("[middleware] auth check failed", err);
+    // A temporary Supabase/network failure must not take the whole site down.
+    console.error("[middleware] session check failed", err);
   }
 
   const path = request.nextUrl.pathname;

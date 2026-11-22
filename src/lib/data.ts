@@ -3,23 +3,46 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, CategoryMonthlyRow, Division, MonthlyRow, Profile } from "@/lib/types";
+import { DEMO } from "@/lib/demo/config";
 
-/** Ensures the visitor is signed in AND on the authorized-users list. */
+type Supa = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Reads the signed-in user's id without an extra round-trip to Supabase Auth.
+ * The id comes from the access token itself (not the editable session JSON), and
+ * the token is verified by the database on the profile query below — a forged or
+ * expired token makes that query fail, so this is as safe as auth.getUser().
+ */
+async function currentUserId(supabase: Supa): Promise<string | null> {
+  if (DEMO) {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ensures the visitor is signed in AND on the authorized-users list. One DB round-trip. */
 export const requireMember = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await currentUserId(supabase);
+  if (!userId) redirect("/login");
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, email, full_name, is_active")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle<Profile>();
 
   if (!profile || !profile.is_active) redirect("/auth/signout?reason=unauthorized");
-  return { supabase, user, profile };
+  return { supabase, profile };
 });
 
 export const getDivisions = cache(async (): Promise<Division[]> => {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ChevronRight, Paperclip } from "lucide-react";
 import type { ExpenseWithRelations } from "@/lib/types";
-import { formatDate, formatPKR, todayPK } from "@/lib/utils";
+import { formatDate, formatPKR, initials, todayPK } from "@/lib/utils";
+import { personColor } from "@/components/AddedBy";
 
 function dayLabel(date: string) {
   const today = todayPK();
@@ -63,7 +64,15 @@ export function MobileExpenseList({ expenses, groupByDate }: { expenses: Expense
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-[15px] font-semibold tabular-nums text-navy-900">{formatPKR(e.amount)}</span>
-                    <span className="block text-[11px] text-ink-subtle">{e.creator?.full_name?.replace(/^sir\s+/i, "").split(" ")[0]}</span>
+                    <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-ink-subtle">
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-semibold text-white"
+                        style={{ background: personColor(e.creator?.id) }}
+                      >
+                        {initials(e.creator?.full_name ?? "?")}
+                      </span>
+                      {e.creator?.full_name?.replace(/^sir\s+/i, "").split(" ")[0] ?? "Unknown"}
+                    </span>
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
                 </Link>

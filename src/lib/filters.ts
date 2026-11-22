@@ -47,8 +47,7 @@ export function applyFilters<Q extends { eq: any; gte: any; lte: any; or: any }>
   if (f.from) q = q.gte("expense_date", f.from);
   if (f.to) q = q.lte("expense_date", f.to);
   if (f.q) {
-    // Strip characters that have meaning in PostgREST filter syntax.
-    const term = f.q.replace(/[%,()*\\:."]/g, " ").replace(/\s+/g, " ").trim();
+    const term = searchTerm(f.q);
     if (term) {
       const like = `%${term}%`;
       q = q.or(
@@ -59,6 +58,24 @@ export function applyFilters<Q extends { eq: any; gte: any; lte: any; or: any }>
     }
   }
   return q as Q;
+}
+
+/** Strips characters that have meaning in PostgREST filter / LIKE syntax. */
+export function searchTerm(q: string) {
+  return q.replace(/[%_,()*\\:."]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Arguments for the public.expense_totals() database function. */
+export function totalsArgs(f: ExpenseFilters) {
+  return {
+    p_division: f.division ?? null,
+    p_category: f.category ?? null,
+    p_method: f.method ?? null,
+    p_user: f.user ?? null,
+    p_from: f.from ?? null,
+    p_to: f.to ?? null,
+    p_q: f.q ? searchTerm(f.q) || null : null,
+  };
 }
 
 export function applySort<Q extends { order: any }>(query: Q, sort?: string): Q {
